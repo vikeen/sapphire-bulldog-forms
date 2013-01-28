@@ -32,6 +32,7 @@ function sbf( args ) {
     this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric' ];
     this.errorLocation   = args['errorLocation']; // default to alert error location
     this.errorMessages   = [];
+    this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined };
 
     this.init();
 }
@@ -59,6 +60,9 @@ sbf.prototype.init = function() {
             }
         }
     }
+
+    // set default error messages
+    this.setDefaultErrorMessages();
 
     window.sbf[this.formId] = this; // hold this form's init data in window for use later in validation
 
@@ -126,7 +130,7 @@ sbf.prototype.validateForm = function() {
                     case 'required':
                         if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length === 0 ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' is required';
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
                                 success = false;
                             }
                         }
@@ -151,7 +155,7 @@ sbf.prototype.validateForm = function() {
                         if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
                             var pattern = /^[0-9]*$/;
                             if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' can only contain numeric characters';
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
                                 success = false;
                             }
                         }
@@ -194,7 +198,7 @@ sbf.prototype.displayErrors = function() {
         case 'inline':
             for ( var i in this.formFields ) {
                 if ( this.formFields[i]['errorMessages'] !== undefined ) {
-                    var error = this.generateErrorMessage( this.formFields[i] ).replace( /\[\+FS\+\]/g, '<br/>' );
+                    var error = this.displayErrorMessage( this.formFields[i] ).replace( /\[\+FS\+\]/g, '<br/>' );
 
                     if ( error !== '' && error !== undefined ) {
                         var elementId = this.formFields[i]['element'].id;
@@ -209,20 +213,20 @@ sbf.prototype.displayErrors = function() {
             break;
         case 'preform':
             var div = document.createElement( 'div' );
-            div.innerHTML = this.generateErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
+            div.innerHTML = this.displayErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
             div.className = 'sbf-form-errors sbf-preform';
             div.id        = 'sbf-form-errors';
             this.form.insertBefore( div, this.form.firstChild );
             break;
         case 'postform':
             var div = document.createElement( 'div' );
-            div.innerHTML = this.generateErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
+            div.innerHTML = this.displayErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
             div.className = 'sbf-form-errors sbf-postform';
             div.id        = 'sbf-form-errors';
             this.form.insertBefore( div, null );
             break;
         default:
-            alert( this.generateErrorMessage().replace( /\[\+FS\+\]/g, '\n' ) );
+            alert( this.displayErrorMessage().replace( /\[\+FS\+\]/g, '\n' ) );
             break;
     }
 };
@@ -248,7 +252,28 @@ sbf.prototype.clearErrors = function() {
     }
 };
 
-sbf.prototype.generateErrorMessage = function( field ) {
+sbf.prototype.setDefaultErrorMessages = function() {
+    this.errorOverrides['default'] = {
+        'required': '[+field+] is required',
+        'num': '[+field+] must be numeric',
+    }
+};
+
+sbf.prototype.getErrorMessage = function( field, validationType ) {
+    var errorMessage;
+
+    if ( this.errorOverrides['user'][validationType] ) {
+        errorMessage = this.errorOverrides['user'][validationType];
+    } else {
+        errorMessage = this.errorOverrides['default'][validationType];
+    }
+
+    errorMessage = errorMessage.replace( /\[\+field\+\]/, field['element'].id );
+
+    return errorMessage;
+};
+
+sbf.prototype.displayErrorMessage = function( field ) {
     if ( field === undefined ) {
         var fullErrorMessage = '';
 
