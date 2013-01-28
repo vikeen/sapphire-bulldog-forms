@@ -29,7 +29,7 @@ function sbf( args ) {
     this.form            = {}; // the form tied to this sbf instance
     this.formFields      = {}; // form input fields
     this.validateFields  = args['validateFields']; // a associative array of fields and what to validate
-    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex' ]; // support validation types
+    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex', 'email', 'match' ]; // supported validation types
     this.errorLocation   = args['errorLocation']; // where to show validation errors, defaults to alert
     this.errorMessages   = []; // a list of error messages returned from the form validation
     this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined }; // store custom error messages
@@ -119,10 +119,6 @@ sbf.prototype.addValidation = function( fieldName, validation ) {
         }
     }
 
-    if ( success ) {
-        //this.log( 'added >' + validation + '< validation to the field >' + fieldName + '<' );
-    }
-
     return success;
 };
 
@@ -202,6 +198,16 @@ sbf.prototype.validateForm = function() {
                             }
                         }
                         break;
+                    case 'email':
+                        if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
+                            if ( ! formObj.isValidEmail( field['element'].value ) ) {
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'match':
+                        break;
                     default:
                         formObj.log( 'unknown valition type >' + validationType + '<' );
                         break;
@@ -280,7 +286,9 @@ sbf.prototype.setDefaultErrorMessages = function() {
     this.errorOverrides['default'] = {
         'required': '[+field+] is required',
         'num': '[+field+] must be numeric',
-        'regex': 'invalid [+field+]'
+        'regex': 'invalid [+field+]',
+        'email': '[+field+] is an invalid',
+        'match': '[+field+] does not match [+match+]'
     }
 };
 
@@ -329,13 +337,69 @@ sbf.prototype.displayErrorMessage = function( field ) {
   #
   ####################################*/
 sbf.prototype.isTextField = function( field ) {
-    //this.log( field.id + ' ' + field.type );
     if ( field.type === 'text' || field.type === 'textarea' || field.type === 'password' ) {
         return true;
     } else {
         return false;
     }
 };
+
+sbf.prototype.isValidEmail = function( email ) {
+    var isValid = true;
+    var atIndex = email.indexOf( '@' );
+
+    if ( atIndex === undefined || atIndex === -1) {
+        isValid = false;
+    }
+    else {
+        var domain    = substr( email, atIndex + 1 );
+        var local     = substr( email, 0, atIndex );
+        var localLen  = local.length;
+        var domainLen = domain.length;
+
+        alert( domain + ' ' + local );
+
+        var regex = [
+            '\\.\\.',
+            '^[A-Za-z0-9\\-\\.]+$',
+            '^(\\\\.|[A-Za-z0-9!#%&`_=\\/$\'*+?^{}|~.-])+$',
+            '^"(\\\\"|[^"])+"$'
+        ]
+
+        var twoDotReg = new RegExp( regex[0] );
+        var domainReg = new RegExp( regex[1] );
+        var local1Reg = new RegExp( regex[2] );
+        var local2Reg = new RegExp( regex[3] );
+
+        // local part length exceeded
+        if ( localLen < 1 || localLen > 64 ) { isValid = false; }
+
+        // domain part length exceeded
+        else if ( domainLen < 1 || domainLen > 255 ) { isValid = false; }
+
+        // local part starts or ends with '.'
+        else if ( local[0] === '.' || local[localLen-1] === '.') { isValid = false; }
+
+        // local part has two consecutive dots
+        else if ( twoDotReg.test( local ) ) { isValid = false; }
+
+        // character not valid in domain part
+        else if ( ! domainReg.test( domain ) ) { isValid = false; }
+
+        // domain part has two consecutive dots
+        else if ( twoDotReg.test( domain ) ) { isValid = false; }
+
+        else if ( ! local1Reg.test( local.replace( '\\\\', '' ) ) ) {
+            // character not valid in local part unless 
+            // local part is quoted
+            if ( ! local2Reg.test( local.replace( '\\\\', '' ) ) ) {
+                isValid = false;
+            }
+        }
+   }
+
+   return isValid;
+}
 
 sbf.prototype.log = function( message ) {
     if ( this.debug ) {

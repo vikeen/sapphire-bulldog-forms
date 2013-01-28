@@ -15,7 +15,8 @@
                         'company': [ 'maxlen=5', 'required', 'alphanumeric' ],
                         'merchant': [ 'required', 'num', 'minlen=10' ],
                         'speaker': [ 'required', 'alpha' ],
-                        'textarea': [ 'required' ]
+                        'textarea': [ 'required' ],
+                        'email': [ 'required', 'email', 'match=emailMatch' ]
                     },
                     'errorOverrides': {}
                 });
@@ -41,32 +42,40 @@
                 <label for="speaker">Speaker:</label>
                 <input type="text" name="speaker" id="speaker" value="" tabindex="4" />
             </div><br/>
+            <div>
+                <label for="email">Email:</label>
+                <input type="text" name="email" id="email" value="" tabindex="5" />
+            </div>
+            <div>
+                <label for="emailMatch">Email Confirm:</label>
+                <input type="text" name="emailMatch" id="emailMatch" value="" tabindex="6" />
+            </div><br/>
 
             <table>
                 <tr>
                     <td>
                         <label for="radio-choice-1">Choice 1</label>
-                        <input type="radio" name="radio-choice" id="radio-choice-1" tabindex="5" value="choice-1" />
+                        <input type="radio" name="radio-choice" id="radio-choice-1" tabindex="7" value="choice-1" />
                     </td>
                     <td>
                         <label for="radio-choice-2">Choice 2</label>
-                        <input type="radio" name="radio-choice" id="radio-choice-2" tabindex="6" value="choice-2" />
+                        <input type="radio" name="radio-choice" id="radio-choice-2" tabindex="8" value="choice-2" />
                     </td>
                 </tr>
                 <tr>
                     <td>
                         <label for="radio-choice-3">Choice 3</label>
-                        <input type="radio" name="radio-choice" id="radio-choice-3" tabindex="7" value="choice-3" />
+                        <input type="radio" name="radio-choice" id="radio-choice-3" tabindex="9" value="choice-3" />
                     </td>
                     <td>
                         <label for="radio-choice-4">Choice 4</label>
-                        <input type="radio" name="radio-choice" id="radio-choice-4" tabindex="8" value="choice-4" />
+                        <input type="radio" name="radio-choice" id="radio-choice-4" tabindex="10" value="choice-4" />
                     </td>
                 </tr>
             </table><br/>
 
             <label for="select-choice">Select Choice:</label>
-            <select name="select-choice" id="select-choice">
+            <select name="select-choice" id="select-choice" tabindex="11">
                 <option value="Choice 1">Choice 1</option>
                 <option value="Choice 2">Choice 2</option>
                 <option value="Choice 3">Choice 3</option>
