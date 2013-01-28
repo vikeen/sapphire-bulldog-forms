@@ -19,3 +19,33 @@ background: linear-gradient(to bottom,  rgba(255,255,255,1) 0%,rgba(229,229,229,
 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#e5e5e5',GradientType=0 ); /* IE6-9 */
     border: 5px solid #373737;
 }
+
+.sbf-form-errors {
+	background: #ffe2e2;
+	border: 3px solid #ce4242;
+	color: #ce4242;
+	padding: 10px;
+	width: 400px;
+}
+
+.sbf-preform, .sbf-postform {
+	margin: 20px 0;
+}
+
+.sbf-inline {
+	padding: 5px;
+	border-width: 1px;
+	text-align: center;
+	text-transform: uppercase;
+	margin: 2px 0 5px 0;
+	font-size: 12px;
+}
+
+label {
+	float: left;
+	width: 150px;
+	text-align: right;
+	margin-right: 20px;
+}
+
+

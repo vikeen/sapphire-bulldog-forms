@@ -8,39 +8,51 @@
             window.onload = function() {
                 var sandbox = new sbf( {
                     'formId': 'sandbox',
+                    'errorLocation': 'inline',
                     'debug': true,
                 });
 
                 sandbox.addValidation( 'name', 'required' );
                 sandbox.addValidation( 'company', 'maxlen=5' );
                 sandbox.addValidation( 'company', 'required' );
+                sandbox.addValidation( 'company', 'alphanumeric' );
+                sandbox.addValidation( 'merchant', 'required' );
+                sandbox.addValidation( 'merchant', 'num' );
+                sandbox.addValidation( 'merchant', 'minlen=10' );
+                sandbox.addValidation( 'speaker', 'required' );
+                sandbox.addValidation( 'speaker', 'alpha' );
             };
         </script>
     </head>
     <body>
         <h1>Sandbox Form</h1>
         <form id="sandbox" action="#" method="post">
-            <label for="name">Text Input:</label>
-            <input type="text" name="name" id="name" value="" tabindex="1" /><br/>
-
-            <label for="company">Company Name:</label>
-            <input type="text" name="company" id="company" value="" tabindex="2" /><br/>
-
-            <label for="merchant">Merchant:</label>
-            <input type="text" name="merchant" id="merchant" value="" tabindex="3" /><br/>
-
-            <label for="speaker">Speaker:</label>
-            <input type="text" name="speaker" id="speaker" value="" tabindex="4" /><br/>
+            <div>
+                <label for="name">Name:</label>
+                <input type="text" name="name" id="name" value="" tabindex="1" />
+            </div>
+            <div>
+                <label for="company">Company:</label>
+                <input type="text" name="company" id="company" value="" tabindex="2" />
+            </div>
+            <div>
+                <label for="merchant">Merchant:</label>
+                <input type="text" name="merchant" id="merchant" value="" tabindex="3" />
+            </div>
+            <div>
+                <label for="speaker">Speaker:</label>
+                <input type="text" name="speaker" id="speaker" value="" tabindex="4" />
+            </div>
 
             <div>
                 <h4>Radio Button Choice</h4>
                 <label for="radio-choice-1">Choice 1</label>
-                <input type="radio" name="radio-choice-1" id="radio-choice-1" tabindex="5" value="choice-1" />
+                <input type="radio" name="radio-choice" id="radio-choice-1" tabindex="5" value="choice-1" /><br/>
                 <label for="radio-choice-2">Choice 2</label>
-                <input type="radio" name="radio-choice-2" id="radio-choice-2" tabindex="6" value="choice-2" />
-            </div>
+                <input type="radio" name="radio-choice" id="radio-choice-2" tabindex="6" value="choice-2" />
+            </div><br/>
 
-            <label for="select-choice">Select Dropdown Choice:</label>
+            <label for="select-choice">Select Choice:</label>
             <select name="select-choice" id="select-choice">
                 <option value="Choice 1">Choice 1</option>
                 <option value="Choice 2">Choice 2</option>

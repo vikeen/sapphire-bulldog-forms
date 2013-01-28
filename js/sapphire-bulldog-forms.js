@@ -28,9 +28,9 @@ function sbf( args ) {
     this.formId          = args['formId'];
     this.form            = {};
     this.formFields      = {}; // form input fields 
-    this.validationTypes = [ 'required', 'maxlen' ];
+    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric' ];
+    this.errorLocation   = args['errorLocation']; // default to alert error location
     this.errorMessages   = [];
-    this.errorLocation   = args['errorLocation'];
 
     this.init();
 }
@@ -99,14 +99,14 @@ sbf.prototype.addValidation = function( fieldName, validation ) {
 sbf.prototype.validate = function() {
     formObj = window.sbf[this.id];
 
-    formObj.errorMessages = []; // reset error messages that may be left from previous submit atempts
-
     var success = true;
 
     for ( var i in formObj.formFields ) {
         if ( formObj.formFields[i]['validation'] ) {
             var field = formObj.formFields[i];
             var tagName = field['element'].tagName.toUpperCase();
+
+            field['errorMessages'] = {}; // reset error message namespace
 
             for ( var validationType in field['validation'] ) {
                 var validationValue = field['validation'][validationType];
@@ -115,7 +115,7 @@ sbf.prototype.validate = function() {
                     case 'required':
                         if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length === 0 ) {
-                                formObj.errorMessages.push( field['element'].id + ' is required' );
+                                field['errorMessages'][validationType] = field['element'].id + ' is required';
                                 success = false;
                             }
                         }
@@ -123,7 +123,43 @@ sbf.prototype.validate = function() {
                     case 'maxlen':
                         if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length > validationValue ) {
-                                formObj.errorMessages.push( field['element'].id + ' is required' );
+                                field['errorMessages'][validationType] = field['element'].id + ' cannot be more than ' + validationValue + ' characters';
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'minlen':
+                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                            if ( field['element'].value.length < validationValue ) {
+                                field['errorMessages'][validationType] = field['element'].id + ' must be atleast ' + validationValue + ' characters';
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'num':
+                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                            var pattern = /^[0-9]*$/;
+                            if ( ! pattern.test( field['element'].value ) ) {
+                                field['errorMessages'][validationType] = field['element'].id + ' can only contain numeric characters';
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'alpha':
+                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                            var pattern = /^[a-zA-Z]*$/;
+                            if ( ! pattern.test( field['element'].value ) ) {
+                                field['errorMessages'][validationType] = field['element'].id + ' can only contain alpha characters';
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'alphanumeric':
+                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                            var pattern = /^[a-zA-Z0-9]*$/;
+                            if ( ! pattern.test( field['element'].value ) ) {
+                                field['errorMessages'][validationType] = field['element'].id + ' can only contain alphanumeric characters';
+                                success = false;
                             }
                         }
                         break;
@@ -141,25 +177,100 @@ sbf.prototype.validate = function() {
 };
 
 sbf.prototype.displayErrors = function() {
-    var fullErrorMessage = '';
+    //var focusField;
 
-    for ( var i in this.errorMessages ) {
-        fullErrorMessage = fullErrorMessage + this.errorMessages[i] + '\n';
-    }
+    this.clearErrors();
 
     switch ( this.errorLocation ) {
         case 'inline':
+            for ( var i in this.formFields ) {
+                if ( this.formFields[i]['errorMessages'] !== undefined ) {
+                    var error = this.generateErrorMessage( this.formFields[i] ).replace( /\[\+FS\+\]/g, '<br/>' );
+
+                    if ( error !== '' && error !== undefined ) {
+                        var elementId = this.formFields[i]['element'].id;
+                        var div = document.createElement( 'div' );
+                        div.className = 'sbf-form-errors sbf-inline';
+                        div.id        = 'sbf-error-' + elementId;
+                        div.innerHTML = error;
+                        this.insertAfter( div, document.getElementById( elementId ) );
+                    }
+                }
+            }
             break;
         case 'preform':
+            var div = document.createElement( 'div' );
+            div.innerHTML = this.generateErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
+            div.className = 'sbf-form-errors sbf-preform';
+            div.id        = 'sbf-form-errors';
+            this.form.insertBefore( div, this.form.firstChild );
             break;
         case 'postform':
+            var div = document.createElement( 'div' );
+            div.innerHTML = this.generateErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
+            div.className = 'sbf-form-errors sbf-postform';
+            div.id        = 'sbf-form-errors';
+            this.form.insertBefore( div, null );
             break;
         default:
-            alert( fullErrorMessage );
+            alert( fullErrorMessage.replace( /\[\+FS\+\]/g, '\n' ) );
             break;
+    }
+
+    //focusField.focus(); // give to the first field that encountered an error
+};
+
+sbf.prototype.clearErrors = function() {
+    // clear inline errors on a per forField basis
+    if ( this.errorLocation === 'inline' ) {
+        for ( var i in this.formFields ) {
+            var field      = this.formFields[i]['element'];
+            var fieldError = document.getElementById( 'sbf-error-' + field.id );
+
+            if ( fieldError ) {
+                fieldError.parentNode.removeChild( fieldError );
+            }
+        }
+    }
+    // clear the default error block for alert, preform, and postform error styling
+    else {
+        var errorBlock = document.getElementById( 'sbf-form-errors' );
+        if ( errorBlock ) {
+            errorBlock.parentNode.removeChild( errorBlock );
+        }
     }
 };
 
+sbf.prototype.generateErrorMessage = function( field ) {
+    if ( field === undefined ) {
+        var fullErrorMessage = '';
+
+        for ( var i in this.formFields ) {
+            for ( var j in this.formFields[i]['errorMessages'] ) {
+                fullErrorMessage += this.formFields[i]['errorMessages'][j] + '[+FS+]';
+            }
+        }
+
+        // strip the last field seperator we added and return
+        return fullErrorMessage.replace( /\[\+FS\+\]$/, '' );
+    } else if ( typeof field === 'object' ) {
+        var fieldErrorMessage = '';
+
+        for ( var i in field['errorMessages'] ) {
+            fieldErrorMessage += field['errorMessages'][i] + '[+FS+]';
+        }
+
+        return fieldErrorMessage.replace( /\[\+FS\+\]$/, '' )
+    } else {
+        return false;
+    }
+};
+
+/*####################################
+  #
+  # Misc / Helper Functions
+  #
+  ####################################*/
 sbf.prototype.isTextField = function( field ) {
     if ( field.type === 'text' || field.type === 'textarea' || field.type === 'password' ) {
         return true;
@@ -181,4 +292,18 @@ sbf.prototype.toArray = function( obj ) {
         array[i] = obj[i];
     }
     return array;
+};
+
+sbf.prototype.insertAfter = function (newElement,targetElement) {
+    // target is what you want it to go after. Look for this elements parent.
+    var parent = targetElement.parentNode;
+ 
+    // if the parents lastchild is the targetElement...
+    if(parent.lastchild == targetElement) {
+        // add the newElement after the target element.
+        parent.appendChild(newElement);
+    } else {
+        // else the target has siblings, insert the new element between the target and it's next sibling.
+        parent.insertBefore(newElement, targetElement.nextSibling);
+    }
 };
