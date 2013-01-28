@@ -28,6 +28,7 @@ function sbf( args ) {
     this.formId          = args['formId'];
     this.form            = {};
     this.formFields      = {}; // form input fields 
+    this.validateFields  = args['validateFields'];
     this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric' ];
     this.errorLocation   = args['errorLocation']; // default to alert error location
     this.errorMessages   = [];
@@ -37,7 +38,7 @@ function sbf( args ) {
 
 sbf.prototype.init = function() {
     this.form = document.getElementById( this.formId );
-    this.form.onsubmit = this.validate;
+    this.form.onsubmit = this.validateForm;
 
     for ( var i in this.form.elements ) {
         if ( this.form.elements[i].type !== 'submit' &&
@@ -46,11 +47,21 @@ sbf.prototype.init = function() {
         }
     }
 
-    //log current form fields
+    // log current form fields
     this.log( 'form fields for >' + this.formId + '< form' );
     this.log( this.formFields );
 
+    // now lets cycle through our validation and add what we need
+    for ( var i in this.validateFields ) {
+        if ( this.formFields[i] !== undefined ) { // double check the field is valid in our form
+            for ( var j in this.validateFields[i] ) {
+                this.addValidation( i, this.validateFields[i][j] );
+            }
+        }
+    }
+
     window.sbf[this.formId] = this; // hold this form's init data in window for use later in validation
+
 };
 
 sbf.prototype.addValidation = function( fieldName, validation ) {
@@ -96,7 +107,7 @@ sbf.prototype.addValidation = function( fieldName, validation ) {
     return success;
 };
 
-sbf.prototype.validate = function() {
+sbf.prototype.validateForm = function() {
     formObj = window.sbf[this.id];
 
     var success = true;
@@ -177,8 +188,6 @@ sbf.prototype.validate = function() {
 };
 
 sbf.prototype.displayErrors = function() {
-    //var focusField;
-
     this.clearErrors();
 
     switch ( this.errorLocation ) {
@@ -213,11 +222,9 @@ sbf.prototype.displayErrors = function() {
             this.form.insertBefore( div, null );
             break;
         default:
-            alert( fullErrorMessage.replace( /\[\+FS\+\]/g, '\n' ) );
+            alert( this.generateErrorMessage().replace( /\[\+FS\+\]/g, '\n' ) );
             break;
     }
-
-    //focusField.focus(); // give to the first field that encountered an error
 };
 
 sbf.prototype.clearErrors = function() {

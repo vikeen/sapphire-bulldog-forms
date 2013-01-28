@@ -10,17 +10,13 @@
                     'formId': 'sandbox',
                     'errorLocation': 'inline',
                     'debug': true,
+                    'validateFields': {
+                        'name': [ 'required' ],
+                        'company': [ 'maxlen=5', 'required', 'alphanumeric' ],
+                        'merchant': [ 'required', 'num', 'minlen=10' ],
+                        'speaker': [ 'required', 'alpha' ]
+                    }
                 });
-
-                sandbox.addValidation( 'name', 'required' );
-                sandbox.addValidation( 'company', 'maxlen=5' );
-                sandbox.addValidation( 'company', 'required' );
-                sandbox.addValidation( 'company', 'alphanumeric' );
-                sandbox.addValidation( 'merchant', 'required' );
-                sandbox.addValidation( 'merchant', 'num' );
-                sandbox.addValidation( 'merchant', 'minlen=10' );
-                sandbox.addValidation( 'speaker', 'required' );
-                sandbox.addValidation( 'speaker', 'alpha' );
             };
         </script>
     </head>
