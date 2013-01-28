@@ -48,4 +48,6 @@ label {
 	margin-right: 20px;
 }
 
-
+.radio-button {
+    float: left;
+}

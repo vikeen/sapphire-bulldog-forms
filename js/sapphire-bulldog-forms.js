@@ -25,23 +25,33 @@
 function sbf( args ) {
     this.version         = 'v1.0.0';
     this.debug           = args['debug'];
-    this.formId          = args['formId'];
-    this.form            = {};
-    this.formFields      = {}; // form input fields 
-    this.validateFields  = args['validateFields'];
-    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric' ];
-    this.errorLocation   = args['errorLocation']; // default to alert error location
-    this.errorMessages   = [];
-    this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined };
+    this.formId          = args['formId']; // html id of the form
+    this.form            = {}; // the form tied to this sbf instance
+    this.formFields      = {}; // form input fields
+    this.validateFields  = args['validateFields']; // a associative array of fields and what to validate
+    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex' ]; // support validation types
+    this.errorLocation   = args['errorLocation']; // where to show validation errors, defaults to alert
+    this.errorMessages   = []; // a list of error messages returned from the form validation
+    this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined }; // store custom error messages
 
     this.init();
 }
 
 sbf.prototype.init = function() {
     this.form = document.getElementById( this.formId );
+
+    if ( this.form === undefined || this.form === null || typeof this.form !== 'object' || this.form.tagName !== 'FORM' ) {
+        this.log( 'unable to find form with id >' + this.formId + '<' );
+        return false;
+    }
+
     this.form.onsubmit = this.validateForm;
 
     for ( var i in this.form.elements ) {
+        /* ignore submit buttons and fields with no id
+         * if field doesn't have an id there is no way to
+         * safely give them error validation later
+         */
         if ( this.form.elements[i].type !== 'submit' &&
              this.form.elements[i].id   !== undefined ) {
             this.formFields[this.form.elements[i].id] = { 'element': this.form.elements[i] };
@@ -49,16 +59,21 @@ sbf.prototype.init = function() {
     }
 
     // log current form fields
-    this.log( 'form fields for >' + this.formId + '< form' );
+    this.log( 'form fields belonging to form with id >' + this.formId + '<' );
     this.log( this.formFields );
 
     // now lets cycle through our validation and add what we need
-    for ( var i in this.validateFields ) {
-        if ( this.formFields[i] !== undefined ) { // double check the field is valid in our form
-            for ( var j in this.validateFields[i] ) {
-                this.addValidation( i, this.validateFields[i][j] );
+    if ( this.validateFields !== undefined ) {
+        for ( var i in this.validateFields ) {
+            if ( this.formFields[i] !== undefined ) { // double check the field is valid in our form
+                for ( var j in this.validateFields[i] ) {
+                    this.addValidation( i, this.validateFields[i][j] );
+                }
             }
         }
+    } else {
+        this.log( 'no validation rules found or invalid declaration of validateFields attribute' );
+        return false;
     }
 
     // set default error messages
@@ -105,7 +120,7 @@ sbf.prototype.addValidation = function( fieldName, validation ) {
     }
 
     if ( success ) {
-        this.log( 'added >' + validation + '< validation to the field >' + fieldName + '<' );
+        //this.log( 'added >' + validation + '< validation to the field >' + fieldName + '<' );
     }
 
     return success;
@@ -128,7 +143,7 @@ sbf.prototype.validateForm = function() {
 
                 switch ( validationType ) {
                     case 'required':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                        if ( formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length === 0 ) {
                                 field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
                                 success = false;
@@ -136,7 +151,7 @@ sbf.prototype.validateForm = function() {
                         }
                         break;
                     case 'maxlen':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                        if ( formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length > validationValue ) {
                                 field['errorMessages'][validationType] = field['element'].id + ' cannot be more than ' + validationValue + ' characters';
                                 success = false;
@@ -144,7 +159,7 @@ sbf.prototype.validateForm = function() {
                         }
                         break;
                     case 'minlen':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
+                        if ( formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length < validationValue ) {
                                 field['errorMessages'][validationType] = field['element'].id + ' must be atleast ' + validationValue + ' characters';
                                 success = false;
@@ -152,8 +167,8 @@ sbf.prototype.validateForm = function() {
                         }
                         break;
                     case 'num':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
-                            var pattern = /^[0-9]*$/;
+                        if ( formObj.isTextField(field['element']) ) {
+                            var pattern = new RegExp( '^[0-9]*$' );
                             if ( ! pattern.test( field['element'].value ) ) {
                                 field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
                                 success = false;
@@ -161,8 +176,8 @@ sbf.prototype.validateForm = function() {
                         }
                         break;
                     case 'alpha':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
-                            var pattern = /^[a-zA-Z]*$/;
+                        if ( formObj.isTextField(field['element']) ) {
+                            var pattern = new RegExp( '^[a-zA-Z]*$' );
                             if ( ! pattern.test( field['element'].value ) ) {
                                 field['errorMessages'][validationType] = field['element'].id + ' can only contain alpha characters';
                                 success = false;
@@ -170,10 +185,19 @@ sbf.prototype.validateForm = function() {
                         }
                         break;
                     case 'alphanumeric':
-                        if ( tagName === 'INPUT' && formObj.isTextField(field['element']) ) {
-                            var pattern = /^[a-zA-Z0-9]*$/;
+                        if ( formObj.isTextField(field['element']) ) {
+                            var pattern = new RegExp( '^[a-zA-Z0-9]*$' );
                             if ( ! pattern.test( field['element'].value ) ) {
                                 field['errorMessages'][validationType] = field['element'].id + ' can only contain alphanumeric characters';
+                                success = false;
+                            }
+                        }
+                        break;
+                    case 'regex':
+                        if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
+                            var pattern = new RegExp( validationValue );
+                            if ( ! pattern.test( field['element'].value ) ) {
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
                                 success = false;
                             }
                         }
@@ -256,6 +280,7 @@ sbf.prototype.setDefaultErrorMessages = function() {
     this.errorOverrides['default'] = {
         'required': '[+field+] is required',
         'num': '[+field+] must be numeric',
+        'regex': 'invalid [+field+]'
     }
 };
 
@@ -304,6 +329,7 @@ sbf.prototype.displayErrorMessage = function( field ) {
   #
   ####################################*/
 sbf.prototype.isTextField = function( field ) {
+    //this.log( field.id + ' ' + field.type );
     if ( field.type === 'text' || field.type === 'textarea' || field.type === 'password' ) {
         return true;
     } else {
@@ -326,16 +352,15 @@ sbf.prototype.toArray = function( obj ) {
     return array;
 };
 
-sbf.prototype.insertAfter = function (newElement,targetElement) {
+sbf.prototype.insertAfter = function( newElement,targetElement ) {
     // target is what you want it to go after. Look for this elements parent.
     var parent = targetElement.parentNode;
- 
+
     // if the parents lastchild is the targetElement...
-    if(parent.lastchild == targetElement) {
-        // add the newElement after the target element.
-        parent.appendChild(newElement);
+    if( parent.lastchild == targetElement ) {
+        parent.appendChild( newElement ); // add the newElement after the target element.
     } else {
-        // else the target has siblings, insert the new element between the target and it's next sibling.
-        parent.insertBefore(newElement, targetElement.nextSibling);
+    // else the target has siblings, insert the new element between the target and it's next sibling.
+        parent.insertBefore( newElement, targetElement.nextSibling );
     }
 };
