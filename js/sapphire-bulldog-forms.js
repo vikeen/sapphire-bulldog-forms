@@ -33,6 +33,7 @@ function sbf( args ) {
     this.errorLocation   = args['errorLocation']; // where to show validation errors, defaults to alert
     this.errorMessages   = []; // a list of error messages returned from the form validation
     this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined }; // store custom error messages
+    this.errorFocus      = undefined;
 
     this.init();
 }
@@ -141,7 +142,8 @@ sbf.prototype.validateForm = function() {
                     case 'required':
                         if ( formObj.isTextField(field['element']) ) {
                             if ( field['element'].value.length === 0 ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
+                                                                                                  validationType );
                                 success = false;
                             }
                         }
@@ -166,7 +168,8 @@ sbf.prototype.validateForm = function() {
                         if ( formObj.isTextField(field['element']) ) {
                             var pattern = new RegExp( '^[0-9]*$' );
                             if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
+                                                                                                  validationType );
                                 success = false;
                             }
                         }
@@ -193,7 +196,8 @@ sbf.prototype.validateForm = function() {
                         if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
                             var pattern = new RegExp( validationValue );
                             if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
+                                                                                                  validationType );
                                 success = false;
                             }
                         }
@@ -201,12 +205,25 @@ sbf.prototype.validateForm = function() {
                     case 'email':
                         if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
                             if ( ! formObj.isValidEmail( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( field, validationType );
+                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
+                                                                                                  validationType );
                                 success = false;
                             }
                         }
                         break;
                     case 'match':
+                        var matchField = formObj.formFields[validationValue];
+                        if ( formObj.isTextField(field['element']) && formObj.isTextField(matchField['element']) ) {
+                            if ( field['element'].value.length > 0 || matchField['element'].value.length > 0 ) {
+                                if ( field['element'].value !== matchField['element'].value ) {
+                                    field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'],
+                                                                                                        'match': matchField['element']
+                                                                                                      },
+                                                                                                      validationType );
+                                    success = false;
+                                }
+                            }
+                        }
                         break;
                     default:
                         formObj.log( 'unknown valition type >' + validationType + '<' );
@@ -292,7 +309,7 @@ sbf.prototype.setDefaultErrorMessages = function() {
     }
 };
 
-sbf.prototype.getErrorMessage = function( field, validationType ) {
+sbf.prototype.getErrorMessage = function( data, validationType ) {
     var errorMessage;
 
     if ( this.errorOverrides['user'][validationType] ) {
@@ -301,7 +318,8 @@ sbf.prototype.getErrorMessage = function( field, validationType ) {
         errorMessage = this.errorOverrides['default'][validationType];
     }
 
-    errorMessage = errorMessage.replace( /\[\+field\+\]/, field['element'].id );
+    errorMessage = errorMessage.replace( /\[\+field\+\]/, data['field'].id );
+    if ( 'match' in data ) { errorMessage = errorMessage.replace( /\[\+match\+\]/, data['match'].id ); }
 
     return errorMessage;
 };
@@ -352,12 +370,10 @@ sbf.prototype.isValidEmail = function( email ) {
         isValid = false;
     }
     else {
-        var domain    = substr( email, atIndex + 1 );
-        var local     = substr( email, 0, atIndex );
+        var domain    = email.substring( atIndex + 1 );
+        var local     = email.substring( 0, atIndex );
         var localLen  = local.length;
         var domainLen = domain.length;
-
-        alert( domain + ' ' + local );
 
         var regex = [
             '\\.\\.',
