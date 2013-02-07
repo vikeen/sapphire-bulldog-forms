@@ -90,110 +90,95 @@ sbf.prototype.validateForm = function() {
 
     var success = true;
 
-    for ( var fieldName in formObj.formFields ) {
-        if ( formObj.validateFields[fieldName] !== undefined ) {
-            var field = formObj.formFields[fieldName];
-            var tagName = field['element'].tagName.toUpperCase();
+    for ( var fieldName in formObj.validateFields ) {
+        var field = formObj.formFields[fieldName];
+        var tagName = field['element'].tagName.toUpperCase();
 
-            if ( formObj.errorData['formErrors'][field['element'].id] === undefined ) {
-                formObj.errorData['formErrors'][field['element'].id] = [];
-            }
-
-
-            for ( var i in formObj.validateFields[fieldName] ) {
-                var validationType = formObj.validateFields[fieldName][i]['type'];
-
-                switch ( validationType ) {
-
-                    case 'required':
-                        if ( formObj.isTextField( field['element'] ) ) {
-                            if ( field['element'].value.length <= 0 ) {
-                                formObj.errorData['formErrors'][fieldName].push( validationType );
+        formObj.errorData['formErrors'][fieldName] = new Array();
+        for ( var validationType in formObj.validateFields[fieldName] ) {
+            switch ( validationType ) {
+                case 'required':
+                    if ( formObj.isTextField( field['element'] ) ) {
+                        if ( field['element'].value.length <= 0 ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'maxlen':
+                    if ( formObj.isTextField( field['element'] ) ) {
+                        if ( field['element'].value.length > formObj.validateFields[fieldName][validationType]['maxlen'] ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'minlen':
+                    if ( formObj.isTextField( field['element'] ) ) {
+                        if ( field['element'].value.length < formObj.validateFields[fieldName][validationType]['minlen'] ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'num':
+                    if ( formObj.isTextField( field['element'] ) ) {
+                        var pattern = new RegExp( '^[0-9]*$' );
+                        if ( ! pattern.test( field['element'].value ) ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'alpha':
+                    if ( formObj.isTextField(field['element']) ) {
+                        var pattern = new RegExp( '^[a-zA-Z]*$' );
+                        if ( ! pattern.test( field['element'].value ) ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'alphanumeric':
+                    if ( formObj.isTextField(field['element']) ) {
+                        var pattern = new RegExp( '^[a-zA-Z0-9]*$' );
+                        if ( ! pattern.test( field['element'].value ) ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'regex':
+                    if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
+                        var pattern = new RegExp( formObj.validateFields[fieldName][validationType]['regex'] );
+                        if ( ! pattern.test( field['element'].value ) ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'email':
+                    if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
+                        if ( ! formObj.isValidEmail( field['element'].value ) ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            success = false;
+                        }
+                    }
+                    break;
+                case 'match':
+                    var matchField = formObj.formFields[formObj.validateFields[fieldName][validationType]['match']];
+                    if ( formObj.isTextField(field['element']) && formObj.isTextField(matchField['element']) ) {
+                        if ( field['element'].value.length > 0 || matchField['element'].value.length > 0 ) {
+                            if ( field['element'].value !== matchField['element'].value ) {
+                                formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
                                 success = false;
                             }
                         }
-                        break;
-                    case 'maxlen':
-                        if ( formObj.isTextField(field['element']) ) {
-                            if ( field['element'].value.length > validationValue ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' cannot be more than ' + validationValue + ' characters';
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'minlen':
-                        if ( formObj.isTextField(field['element']) ) {
-                            if ( field['element'].value.length < validationValue ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' must be atleast ' + validationValue + ' characters';
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'num':
-                        if ( formObj.isTextField(field['element']) ) {
-                            var pattern = new RegExp( '^[0-9]*$' );
-                            if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
-                                                                                                  validationType );
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'alpha':
-                        if ( formObj.isTextField(field['element']) ) {
-                            var pattern = new RegExp( '^[a-zA-Z]*$' );
-                            if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' can only contain alpha characters';
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'alphanumeric':
-                        if ( formObj.isTextField(field['element']) ) {
-                            var pattern = new RegExp( '^[a-zA-Z0-9]*$' );
-                            if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = field['element'].id + ' can only contain alphanumeric characters';
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'regex':
-                        if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
-                            var pattern = new RegExp( validationValue );
-                            if ( ! pattern.test( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
-                                                                                                  validationType );
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'email':
-                        if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
-                            if ( ! formObj.isValidEmail( field['element'].value ) ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
-                                                                                                  validationType );
-                                success = false;
-                            }
-                        }
-                        break;
-                    case 'match':
-                        var matchField = formObj.formFields[validationValue];
-                        if ( formObj.isTextField(field['element']) && formObj.isTextField(matchField['element']) ) {
-                            if ( field['element'].value.length > 0 || matchField['element'].value.length > 0 ) {
-                                if ( field['element'].value !== matchField['element'].value ) {
-                                    field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'],
-                                                                                                        'match': matchField['element']
-                                                                                                      },
-                                                                                                      validationType );
-                                    success = false;
-                                }
-                            }
-                        }
-                        break;
-                    default:
-                        formObj.log( 'unknown valition type >' + validationType + '<' );
-                        break;
-                }
+                    }
+                    break;
+                default:
+                    formObj.log( 'unknown validation type >' + validationType + '<' );
+                    break;
             }
         }
     }
@@ -209,9 +194,14 @@ sbf.prototype.displayErrors = function() {
     switch ( this.errorData['location'] ) {
         case 'inline':
             for ( var fieldName in this.errorData['formErrors'] ) {
-                var error = this.getErrorMessage( fieldName, this.errorData['formErrors'][fieldName] );
+                var error = '';
+
+                for ( var validationType in this.errorData['formErrors'][fieldName] ) {
+                    error += this.getErrorMessage( fieldName, validationType ) + '<br/>';
+                }
 
                 if ( error !== '' && error !== undefined ) {
+                    error = error.replace( /\<br\/\>$/g, '' ); // strip the last break for semantics and better browser support
                     var elementId = this.formFields[fieldName]['element'].id;
                     var div = document.createElement( 'div' );
                     div.className = 'sbf-form-errors sbf-inline';
@@ -227,6 +217,7 @@ sbf.prototype.displayErrors = function() {
             div.className = 'sbf-form-errors sbf-preform';
             div.id        = 'sbf-form-errors';
             this.form.insertBefore( div, this.form.firstChild );
+            window.location.hash = '#' + div.id;
             break;
         case 'postform':
             var div = document.createElement( 'div' );
@@ -234,6 +225,7 @@ sbf.prototype.displayErrors = function() {
             div.className = 'sbf-form-errors sbf-postform';
             div.id        = 'sbf-form-errors';
             this.form.insertBefore( div, null );
+            window.location.hash = '#' + div.id;
             break;
         default:
             alert( this.displayErrorMessage().replace( /\[\+FS\+\]/g, '\n' ) );
@@ -266,22 +258,22 @@ sbf.prototype.setDefaultErrorMessages = function() {
     this.errorData['messages']['default'] = {
         'required': '[+field+] is required',
         'num': '[+field+] must be numeric',
+        'alphanumeric': '[+field+] must be alphanumeric',
+        'alpha': '[+field+] must be alpha characters',
         'regex': 'invalid [+field+]',
         'email': '[+field+] is an invalid email address',
+        'maxlen': '[+field+] must contain fewer than [+maxlen+] characters',
+        'minlen': '[+field+] must contain more than [+minlen+] characters',
         'match': '[+field+] does not match [+match+]'
     }
 };
 
 sbf.prototype.getErrorMessage = function( fieldName, validationType ) {
-    var errorMessage;
+    var errorMessage = undefined;
     var fieldUniqueError = false;
 
-    for ( var i in this.validateFields[fieldName] ) {
-        if ( this.validateFields[fieldName][i]['type'].toString() === validationType.toString() ) {
-            if ( this.validateFields[fieldName][i]['error'] ) {
-                fieldUniqueError = this.validateFields[fieldName][i]['error'];
-            }
-        }
+    if ( this.errorData['formErrors'][fieldName][validationType]['error'] ) {
+        fieldUniqueError = this.errorData['formErrors'][fieldName][validationType]['error']
     }
 
     if ( fieldUniqueError !== false )
@@ -293,6 +285,9 @@ sbf.prototype.getErrorMessage = function( fieldName, validationType ) {
 
     errorMessage = errorMessage.replace( /\[\+FS\+\]/g, '<br/>' );
     errorMessage = errorMessage.replace( /\[\+FIELD\+\]/ig, fieldName );
+    errorMessage = errorMessage.replace( /\[\+MINLEN\+\]/ig, this.errorData['formErrors'][fieldName][validationType]['minlen'] );
+    errorMessage = errorMessage.replace( /\[\+MAXLEN\+\]/ig, this.errorData['formErrors'][fieldName][validationType]['maxlen'] );
+    errorMessage = errorMessage.replace( /\[\+MATCH\+\]/ig, this.errorData['formErrors'][fieldName][validationType]['match'] );
 
     return errorMessage;
 };
