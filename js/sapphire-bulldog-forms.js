@@ -30,10 +30,14 @@ function sbf( args ) {
     this.formFields      = {}; // form input fields
     this.validateFields  = args['validateFields']; // a associative array of fields and what to validate
     this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex', 'email', 'match' ]; // supported validation types
-    this.errorLocation   = args['errorLocation']; // where to show validation errors, defaults to alert
-    this.errorMessages   = []; // a list of error messages returned from the form validation
-    this.errorOverrides  = { 'user': args['errorOverrides'], 'default': undefined }; // store custom error messages
-    this.errorFocus      = undefined;
+    this.errorData = {
+        'location': args['errorLocation'],
+        'formErrors': {},
+        'messages': {
+            'user': args['errorOverrides'],
+            'default': undefined
+        }
+    };
 
     this.init();
 }
@@ -43,6 +47,11 @@ sbf.prototype.init = function() {
 
     if ( this.form === undefined || this.form === null || typeof this.form !== 'object' || this.form.tagName !== 'FORM' ) {
         this.log( 'unable to find form with id >' + this.formId + '<' );
+        return false;
+    }
+
+    if ( this.validateFields === undefined ) {
+        this.log( 'no validation rules found or invalid declaration of validateFields attribute' );
         return false;
     }
 
@@ -60,90 +69,46 @@ sbf.prototype.init = function() {
     }
 
     // log current form fields
-    this.log( 'form fields belonging to form with id >' + this.formId + '<' );
+    this.log( 'fields found for >' + this.formId + '< form' );
     this.log( this.formFields );
-
-    // now lets cycle through our validation and add what we need
-    if ( this.validateFields !== undefined ) {
-        for ( var i in this.validateFields ) {
-            if ( this.formFields[i] !== undefined ) { // double check the field is valid in our form
-                for ( var j in this.validateFields[i] ) {
-                    this.addValidation( i, this.validateFields[i][j] );
-                }
-            }
-        }
-    } else {
-        this.log( 'no validation rules found or invalid declaration of validateFields attribute' );
-        return false;
-    }
+    this.log( 'validation found for >' + this.formId + '< form');
+    this.log( this.validateFields );
 
     // set default error messages
     this.setDefaultErrorMessages();
 
     window.sbf[this.formId] = this; // hold this form's init data in window for use later in validation
-
+    return window.sbf[this.formId];
+    //return this.validateForm();
 };
 
-sbf.prototype.addValidation = function( fieldName, validation ) {
-    var field = this.formFields[fieldName];
-
-    if ( field === undefined || field === null ) {
-        this.log( 'unable to find the field >' + fieldName + '<' );
-        return false;
-    }
-
-    if ( typeof validation !== 'string' )  {
-        this.log( 'validation must be a string, found >' + typeof validation + '<' );
-        return false;
-    }
-
-    var valArray = validation.split( '=' );
-    var length   = this.validationTypes.length;
-
-    var success = false;
-    while ( length-- ) {
-        if ( this.validationTypes[length] === valArray[0] ) {
-            // validation type confirmed, lets see if we need to add the validation section now
-            if ( field['validation'] === undefined ) {
-                field['validation'] = {};
-            }
-
-            if ( valArray.length === 2 ) {
-                field['validation'][valArray[0]] = valArray[1];
-                success = true;
-            } else if ( valArray.length === 1 ) {
-                field['validation'][valArray[0]] = true;
-                success = true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    return success;
-};
+sbf.prototype.addValidation = function( fieldName, validation ) {};
 
 sbf.prototype.validateForm = function() {
     formObj = window.sbf[this.id];
+    //formObj = this;
 
     var success = true;
 
-    for ( var i in formObj.formFields ) {
-        if ( formObj.formFields[i]['validation'] ) {
-            var field = formObj.formFields[i];
+    for ( var fieldName in formObj.formFields ) {
+        if ( formObj.validateFields[fieldName] !== undefined ) {
+            var field = formObj.formFields[fieldName];
             var tagName = field['element'].tagName.toUpperCase();
 
-            field['errorMessages'] = {}; // reset error message namespace
+            if ( formObj.errorData['formErrors'][field['element'].id] === undefined ) {
+                formObj.errorData['formErrors'][field['element'].id] = [];
+            }
 
-            for ( var validationType in field['validation'] ) {
-                var validationValue = field['validation'][validationType];
+
+            for ( var i in formObj.validateFields[fieldName] ) {
+                var validationType = formObj.validateFields[fieldName][i]['type'];
 
                 switch ( validationType ) {
+
                     case 'required':
-                        if ( formObj.isTextField(field['element']) ) {
-                            if ( field['element'].value.length === 0 ) {
-                                field['errorMessages'][validationType] = formObj.getErrorMessage( { 'field': field['element'] },
-                                                                                                  validationType );
+                        if ( formObj.isTextField( field['element'] ) ) {
+                            if ( field['element'].value.length <= 0 ) {
+                                formObj.errorData['formErrors'][fieldName].push( validationType );
                                 success = false;
                             }
                         }
@@ -241,20 +206,18 @@ sbf.prototype.validateForm = function() {
 sbf.prototype.displayErrors = function() {
     this.clearErrors();
 
-    switch ( this.errorLocation ) {
+    switch ( this.errorData['location'] ) {
         case 'inline':
-            for ( var i in this.formFields ) {
-                if ( this.formFields[i]['errorMessages'] !== undefined ) {
-                    var error = this.displayErrorMessage( this.formFields[i] ).replace( /\[\+FS\+\]/g, '<br/>' );
+            for ( var fieldName in this.errorData['formErrors'] ) {
+                var error = this.getErrorMessage( fieldName, this.errorData['formErrors'][fieldName] );
 
-                    if ( error !== '' && error !== undefined ) {
-                        var elementId = this.formFields[i]['element'].id;
-                        var div = document.createElement( 'div' );
-                        div.className = 'sbf-form-errors sbf-inline';
-                        div.id        = 'sbf-error-' + elementId;
-                        div.innerHTML = error;
-                        this.insertAfter( div, document.getElementById( elementId ) );
-                    }
+                if ( error !== '' && error !== undefined ) {
+                    var elementId = this.formFields[fieldName]['element'].id;
+                    var div = document.createElement( 'div' );
+                    div.className = 'sbf-form-errors sbf-inline';
+                    div.id        = 'sbf-error-' + elementId;
+                    div.innerHTML = error;
+                    this.insertAfter( div, document.getElementById( elementId ) );
                 }
             }
             break;
@@ -280,7 +243,7 @@ sbf.prototype.displayErrors = function() {
 
 sbf.prototype.clearErrors = function() {
     // clear inline errors on a per forField basis
-    if ( this.errorLocation === 'inline' ) {
+    if ( this.errorData['location'] === 'inline' ) {
         for ( var i in this.formFields ) {
             var field      = this.formFields[i]['element'];
             var fieldError = document.getElementById( 'sbf-error-' + field.id );
@@ -300,53 +263,38 @@ sbf.prototype.clearErrors = function() {
 };
 
 sbf.prototype.setDefaultErrorMessages = function() {
-    this.errorOverrides['default'] = {
+    this.errorData['messages']['default'] = {
         'required': '[+field+] is required',
         'num': '[+field+] must be numeric',
         'regex': 'invalid [+field+]',
-        'email': '[+field+] is an invalid',
+        'email': '[+field+] is an invalid email address',
         'match': '[+field+] does not match [+match+]'
     }
 };
 
-sbf.prototype.getErrorMessage = function( data, validationType ) {
+sbf.prototype.getErrorMessage = function( fieldName, validationType ) {
     var errorMessage;
+    var fieldUniqueError = false;
 
-    if ( this.errorOverrides['user'][validationType] ) {
-        errorMessage = this.errorOverrides['user'][validationType];
-    } else {
-        errorMessage = this.errorOverrides['default'][validationType];
-    }
-
-    errorMessage = errorMessage.replace( /\[\+field\+\]/, data['field'].id );
-    if ( 'match' in data ) { errorMessage = errorMessage.replace( /\[\+match\+\]/, data['match'].id ); }
-
-    return errorMessage;
-};
-
-sbf.prototype.displayErrorMessage = function( field ) {
-    if ( field === undefined ) {
-        var fullErrorMessage = '';
-
-        for ( var i in this.formFields ) {
-            for ( var j in this.formFields[i]['errorMessages'] ) {
-                fullErrorMessage += this.formFields[i]['errorMessages'][j] + '[+FS+]';
+    for ( var i in this.validateFields[fieldName] ) {
+        if ( this.validateFields[fieldName][i]['type'].toString() === validationType.toString() ) {
+            if ( this.validateFields[fieldName][i]['error'] ) {
+                fieldUniqueError = this.validateFields[fieldName][i]['error'];
             }
         }
-
-        // strip the last field seperator we added and return
-        return fullErrorMessage.replace( /\[\+FS\+\]$/, '' );
-    } else if ( typeof field === 'object' ) {
-        var fieldErrorMessage = '';
-
-        for ( var i in field['errorMessages'] ) {
-            fieldErrorMessage += field['errorMessages'][i] + '[+FS+]';
-        }
-
-        return fieldErrorMessage.replace( /\[\+FS\+\]$/, '' )
-    } else {
-        return false;
     }
+
+    if ( fieldUniqueError !== false )
+        errorMessage = fieldUniqueError;
+    else if ( this.errorData['messages']['user'][validationType] )
+        errorMessage = this.errorData['messages']['user'][validationType];
+    else
+        errorMessage = this.errorData['messages']['default'][validationType];
+
+    errorMessage = errorMessage.replace( /\[\+FS\+\]/g, '<br/>' );
+    errorMessage = errorMessage.replace( /\[\+FIELD\+\]/ig, fieldName );
+
+    return errorMessage;
 };
 
 /*####################################

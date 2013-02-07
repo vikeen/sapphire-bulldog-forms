@@ -9,17 +9,45 @@
                 var sandbox = new sbf( {
                     'formId': 'sandbox',
                     'errorLocation': 'inline',
+                    'errorOverrides': {
+                        'required': 'This is a general user declared error message for required validation'
+                    },
                     'debug': true,
                     'validateFields': {
-                        'name': [ 'required', 'regex=^John$' ],
-                        'company': [ 'maxlen=5', 'required', 'alphanumeric' ],
-                        'merchant': [ 'required', 'num', 'minlen=10' ],
-                        'speaker': [ 'required', 'alpha' ],
-                        'textarea': [ 'required' ],
-                        'email': [ 'required', 'email', 'match=emailMatch' ]
-                    },
-                    'errorOverrides': {}
+                        /*'name': [
+                            { 'type': 'required',
+                              'error': 'A name is required beefcake!' },
+                            { 'type': 'regex',
+                                'regex': '^John$' }
+                        ],
+                        'company': [
+                            { 'type': 'maxlen',
+                                'maxlen': '5' },
+                            { 'type': 'required' },
+                            { 'type': 'alphanumeric' }
+                        ],
+                        'merchant': [
+                            { 'type': 'required' },
+                            { 'type': 'num' },
+                            { 'type': 'minlen',
+                                'minlen': '10' }
+                        ],
+                        'speaker': [
+                            { 'type': 'required' },
+                            { 'type': 'alpha' }
+                        ],*/
+                        'textarea': [
+                            { 'type': 'required' }
+                        ],/*
+                        'email': [
+                            { 'type': 'required' },
+                            { 'type': 'email' },
+                            { 'type': 'match',
+                                'match': 'emailMatch' }
+                        ]*/
+                    }
                 });
+
             };
         </script>
     </head>
