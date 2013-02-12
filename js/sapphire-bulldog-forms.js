@@ -29,7 +29,8 @@ function sbf( args ) {
     this.form            = {}; // the form tied to this sbf instance
     this.formFields      = {}; // form input fields
     this.validateFields  = args['validateFields']; // a associative array of fields and what to validate
-    this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex', 'email', 'match' ]; // supported validation types
+    //TODO: remove
+    //this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex', 'email', 'match' ]; // supported validation types
     this.errorData = {
         'location': args['errorLocation'],
         'formErrors': {},
@@ -58,9 +59,10 @@ sbf.prototype.init = function() {
     this.form.onsubmit = this.validateForm;
 
     for ( var i in this.form.elements ) {
-        /* ignore submit buttons and fields with no id
+        /* ignore submit buttons and fields with no id.
          * if field doesn't have an id there is no way to
-         * safely give them error validation later
+         * safely give them error validation later. Not
+         * to mention it's bad code practice anyways
          */
         if ( this.form.elements[i].type !== 'submit' &&
              this.form.elements[i].id   !== undefined ) {
@@ -79,14 +81,26 @@ sbf.prototype.init = function() {
 
     window.sbf[this.formId] = this; // hold this form's init data in window for use later in validation
     return window.sbf[this.formId];
-    //return this.validateForm();
+    //return this.validateForm(); // used only for special cases of debugging
 };
 
-sbf.prototype.addValidation = function( fieldName, validation ) {};
+//TODO: test this function
+sbf.prototype.addValidation = function( args ) {
+    var fieldName         = args['fieldName'];
+    var validationType    = args['validationType'];
+    var validationDetails = args['validationDetails'];
+
+    if ( fieldName !== undefined && validationType !== undefined && validationDetails !== undefined &&
+         fieldName !== ''        && validationType !== ''        && validationDetails !== '' ) {
+        this.validateFields[fieldName][validationType] = validationDetails;
+    } else {
+        this.log( 'addValidation: failed to add validation >' + validationType + '< to field >' + fieldName + '<')
+    }
+};
 
 sbf.prototype.validateForm = function() {
     formObj = window.sbf[this.id];
-    //formObj = this;
+    //formObj = this; // used only for special cases of debugging
 
     var success = true;
 
@@ -191,46 +205,65 @@ sbf.prototype.validateForm = function() {
 sbf.prototype.displayErrors = function() {
     this.clearErrors();
 
-    switch ( this.errorData['location'] ) {
-        case 'inline':
-            for ( var fieldName in this.errorData['formErrors'] ) {
-                var error = '';
+    var errorLocation = this.errorData['location'];
+    var errorMessage = '';
 
-                for ( var validationType in this.errorData['formErrors'][fieldName] ) {
-                    error += this.getErrorMessage( fieldName, validationType ) + '<br/>';
-                }
+    if ( errorLocation === 'inline' ) {
+        for ( var fieldName in this.errorData['formErrors'] ) {
+            var errorMessage = ''; // reset errorMessage from the last field
 
-                if ( error !== '' && error !== undefined ) {
-                    error = error.replace( /\<br\/\>$/g, '' ); // strip the last break for semantics and better browser support
-                    var elementId = this.formFields[fieldName]['element'].id;
-                    var div = document.createElement( 'div' );
-                    div.className = 'sbf-form-errors sbf-inline';
-                    div.id        = 'sbf-error-' + elementId;
-                    div.innerHTML = error;
-                    this.insertAfter( div, document.getElementById( elementId ) );
-                }
+            for ( var validationType in this.errorData['formErrors'][fieldName] ) {             // foreach field with an error
+                errorMessage += this.getErrorMessage( fieldName, validationType ) + '<br/>';
             }
-            break;
-        case 'preform':
-            var div = document.createElement( 'div' );
-            div.innerHTML = this.displayErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
-            div.className = 'sbf-form-errors sbf-preform';
-            div.id        = 'sbf-form-errors';
-            this.form.insertBefore( div, this.form.firstChild );
-            window.location.hash = '#' + div.id;
-            break;
-        case 'postform':
-            var div = document.createElement( 'div' );
-            div.innerHTML = this.displayErrorMessage().replace( /\[\+FS\+\]/g, '<br/>' );
-            div.className = 'sbf-form-errors sbf-postform';
-            div.id        = 'sbf-form-errors';
-            this.form.insertBefore( div, null );
-            window.location.hash = '#' + div.id;
-            break;
-        default:
-            alert( this.displayErrorMessage().replace( /\[\+FS\+\]/g, '\n' ) );
-            break;
-    }
+
+            if ( errorMessage !== '' && errorMessage !== undefined ) {
+                errorMessage = errorMessage.replace( /\<br\/\>$/g, '' ); // strip the last break for semantics and better browser support
+                var element = this.formFields[fieldName]['element'];
+                var div = document.createElement( 'div' );
+                div.className = 'sbf-form-errors sbf-inline';
+                div.id        = 'sbf-error-' + element.id;
+                div.innerHTML = errorMessage;
+                this.insertAfter( div, element );
+            }
+        }
+    } // end  ( errorLocation === 'inline' )
+    else {
+        for ( var fieldName in this.errorData['formErrors'] ) {                                 // foreach field with an error
+            for ( var validationType in this.errorData['formErrors'][fieldName] ) {             // foreach failed validationType in that field
+                errorMessage += this.getErrorMessage( fieldName, validationType ) + '[+FS+]';
+            }
+        }
+
+        if ( errorMessage !== '' && errorMessage !== undefined ) {
+            errorMessage = errorMessage.replace( /\[\+FS\+\]$/g, '' ); // strip the last [+FS+] for semantics and better browser support
+
+            if ( errorLocation === 'preform' || errorLocation === 'postform' ) {
+                errorMessage = errorMessage.replace( /\[\+FS\+\]/g, '<br/>' ); // replace the field separators with line breaks
+
+                var div       = document.createElement( 'div' );
+                div.id        = 'sbf-form-errors';
+                div.innerHTML = errorMessage;
+
+                if ( errorLocation === 'preform' ) {
+                    div.className = 'sbf-form-errors sbf-preform';
+                    this.form.insertBefore( div, this.form.firstChild );
+                    window.scroll( 0, this.getYPosition( div.id ) );
+                } else {
+                    div.className = 'sbf-form-errors sbf-postform';
+                    this.form.insertBefore( div, null );
+
+                    /* Try to scroll the browser so that the bottom of the error div is on the bottom on of the viewport.
+                     * This enhances provides significant UX enhancements over placing the error div inline with the top of the viewport.
+                     */
+                    var windowOffset = this.getYPosition( div.id ) - ( this.getViewport()['height'] - div.offsetHeight );
+                    window.scroll( 0, windowOffset );
+                }
+            } else { // default fallback of alert message for errors
+                errorMessage = errorMessage.replace( /\[\+FS\+\]/g, '\n' ); // replace the field separators with new lines
+                alert( errorMessage );
+            }
+        } // end ( errorMessage !== '' && errorMessage !== undefined )
+    }// end ( ELSE errorLocation === 'inline' )
 };
 
 sbf.prototype.clearErrors = function() {
@@ -262,8 +295,8 @@ sbf.prototype.setDefaultErrorMessages = function() {
         'alpha': '[+field+] must be alpha characters',
         'regex': 'invalid [+field+]',
         'email': '[+field+] is an invalid email address',
-        'maxlen': '[+field+] must contain fewer than [+maxlen+] characters',
-        'minlen': '[+field+] must contain more than [+minlen+] characters',
+        'maxlen': '[+field+] has a maximum character limit of [+maxlen+]',
+        'minlen': '[+field+] has a minimum character limit of [+minlen+]',
         'match': '[+field+] does not match [+match+]'
     }
 };
@@ -283,7 +316,6 @@ sbf.prototype.getErrorMessage = function( fieldName, validationType ) {
     else
         errorMessage = this.errorData['messages']['default'][validationType];
 
-    errorMessage = errorMessage.replace( /\[\+FS\+\]/g, '<br/>' );
     errorMessage = errorMessage.replace( /\[\+FIELD\+\]/ig, fieldName );
     errorMessage = errorMessage.replace( /\[\+MINLEN\+\]/ig, this.errorData['formErrors'][fieldName][validationType]['minlen'] );
     errorMessage = errorMessage.replace( /\[\+MAXLEN\+\]/ig, this.errorData['formErrors'][fieldName][validationType]['maxlen'] );
@@ -375,7 +407,7 @@ sbf.prototype.toArray = function( obj ) {
     return array;
 };
 
-sbf.prototype.insertAfter = function( newElement,targetElement ) {
+sbf.prototype.insertAfter = function( newElement, targetElement ) {
     // target is what you want it to go after. Look for this elements parent.
     var parent = targetElement.parentNode;
 
@@ -386,4 +418,28 @@ sbf.prototype.insertAfter = function( newElement,targetElement ) {
     // else the target has siblings, insert the new element between the target and it's next sibling.
         parent.insertBefore( newElement, targetElement.nextSibling );
     }
+};
+
+// REFERENCE: http://andylangton.co.uk/articles/javascript/get-viewport-size-javascript/
+sbf.prototype.getViewport = function() {
+    var e = window, a = 'inner';
+
+    if ( !( 'innerWidth' in window ) ) {
+        a = 'client';
+        e = document.documentElement || document.body;
+    }
+    return { width : e[ a+'Width' ] , height : e[ a+'Height' ] }
+};
+
+// REFERENCE: http://clifgriffin.com/2008/10/14/using-javascript-to-scroll-to-a-specific-elementobject/
+sbf.prototype.getYPosition = function( elementId ) {
+    var element = document.getElementById( elementId );
+    var yPosition = 0;
+
+    while ( element.offsetParent ) {
+        yPosition += element.offsetTop;
+        element = element.offsetParent;
+    }
+    
+    return yPosition;
 };
