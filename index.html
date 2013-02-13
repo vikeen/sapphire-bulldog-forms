@@ -32,9 +32,6 @@
                             'required': {},
                             'alpha': {}
                         },
-                        'textarea': {
-                            'required': {}
-                        },
                         'email': {
                             'required': {},
                             'email': {},
@@ -42,7 +39,25 @@
                         }
                     }
                 });
+                sandbox.removeValidation( {
+                    'fieldName': 'email'
+                });
 
+                sandbox.addValidation( {
+                    'fieldName': 'email',
+                    'validation': {
+                        'required': {},
+                        'email': {},
+                        'match': { 'match': 'emailMatch' }
+                    }
+                });
+
+                sandbox.addValidation( {
+                    'fieldName': 'textarea',
+                    'validation': {
+                        'required': {}
+                    }
+                });
             };
         </script>
     </head>
@@ -112,6 +127,6 @@
 
             <input type="submit" value="Submit" />
         </form>
-        <p id="ipsum-reference">Form hmtl provided by: <a href="http://html-ipsum.com/">&lt;html&gt; ipsum</a></p>
+        <p id="ipsum-reference">Form html provided by: <a href="http://html-ipsum.com/">&lt;html&gt; ipsum</a></p>
     </body>
 </html>

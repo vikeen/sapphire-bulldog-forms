@@ -29,14 +29,12 @@ function sbf( args ) {
     this.form            = {}; // the form tied to this sbf instance
     this.formFields      = {}; // form input fields
     this.validateFields  = args['validateFields']; // a associative array of fields and what to validate
-    //TODO: remove
-    //this.validationTypes = [ 'required', 'maxlen', 'minlen', 'num', 'alpha', 'alphanumeric', 'regex', 'email', 'match' ]; // supported validation types
     this.errorData = {
         'location': args['errorLocation'],
         'formErrors': {},
         'messages': {
             'user': args['errorOverrides'],
-            'default': undefined
+            'default': {}
         }
     };
 
@@ -47,12 +45,12 @@ sbf.prototype.init = function() {
     this.form = document.getElementById( this.formId );
 
     if ( this.form === undefined || this.form === null || typeof this.form !== 'object' || this.form.tagName !== 'FORM' ) {
-        this.log( 'unable to find form with id >' + this.formId + '<' );
+        this.log( 'init: unable to find form with id >' + this.formId + '<' );
         return false;
     }
 
     if ( this.validateFields === undefined ) {
-        this.log( 'no validation rules found or invalid declaration of validateFields attribute' );
+        this.log( 'init: no validation rules found or invalid declaration of validateFields attribute' );
         return false;
     }
 
@@ -71,9 +69,9 @@ sbf.prototype.init = function() {
     }
 
     // log current form fields
-    this.log( 'fields found for >' + this.formId + '< form' );
+    this.log( 'init: fields found for >' + this.formId + '< form' );
     this.log( this.formFields );
-    this.log( 'validation found for >' + this.formId + '< form');
+    this.log( 'init: validation found for >' + this.formId + '< form');
     this.log( this.validateFields );
 
     // set default error messages
@@ -84,17 +82,33 @@ sbf.prototype.init = function() {
     //return this.validateForm(); // used only for special cases of debugging
 };
 
-//TODO: test this function
 sbf.prototype.addValidation = function( args ) {
-    var fieldName         = args['fieldName'];
-    var validationType    = args['validationType'];
-    var validationDetails = args['validationDetails'];
+    var fieldName  = args['fieldName'];
+    var validation = args['validation'];
 
-    if ( fieldName !== undefined && validationType !== undefined && validationDetails !== undefined &&
-         fieldName !== ''        && validationType !== ''        && validationDetails !== '' ) {
-        this.validateFields[fieldName][validationType] = validationDetails;
+    // 1. check valid input to method
+    // 2. check that the field is valid for this form
+    if ( fieldName !== undefined && fieldName !== '' && validation !== undefined && this.formFields[fieldName] !== undefined ) {
+        // add field if it doesn't exist
+        if ( this.validateFields[fieldName] === undefined )
+            this.validateFields[fieldName] = {};
+
+        this.validateFields[fieldName] = validation;
+        this.log( 'addValidation: successfully added validation to field >' + fieldName + '<');
     } else {
-        this.log( 'addValidation: failed to add validation >' + validationType + '< to field >' + fieldName + '<')
+        this.log( 'addValidation: failed to add validation to field >' + fieldName + '<');
+    }
+};
+
+sbf.prototype.removeValidation = function( args ) {
+    var fieldName = args['fieldName'];
+
+    if( fieldName !== undefined && fieldName !== '' ) {
+        if ( this.validateFields[fieldName] !== undefined )
+            this.validateFields[fieldName] = undefined;
+        this.log( 'removeValidation: successfully removeed validation for field >' + fieldName +  '<' );
+    } else {
+        this.log( 'removeValidation: failed to remove validation for field >' + fieldName +  '<' );
     }
 };
 
@@ -102,9 +116,10 @@ sbf.prototype.validateForm = function() {
     formObj = window.sbf[this.id];
     //formObj = this; // used only for special cases of debugging
 
-    var success = true;
+    var formSuccess = true;
 
     for ( var fieldName in formObj.validateFields ) {
+        var fieldSuccess = true;
         var field = formObj.formFields[fieldName];
         var tagName = field['element'].tagName.toUpperCase();
 
@@ -115,7 +130,7 @@ sbf.prototype.validateForm = function() {
                     if ( formObj.isTextField( field['element'] ) ) {
                         if ( field['element'].value.length <= 0 ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -123,7 +138,7 @@ sbf.prototype.validateForm = function() {
                     if ( formObj.isTextField( field['element'] ) ) {
                         if ( field['element'].value.length > formObj.validateFields[fieldName][validationType]['maxlen'] ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -131,7 +146,7 @@ sbf.prototype.validateForm = function() {
                     if ( formObj.isTextField( field['element'] ) ) {
                         if ( field['element'].value.length < formObj.validateFields[fieldName][validationType]['minlen'] ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -140,7 +155,7 @@ sbf.prototype.validateForm = function() {
                         var pattern = new RegExp( '^[0-9]*$' );
                         if ( ! pattern.test( field['element'].value ) ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -149,7 +164,7 @@ sbf.prototype.validateForm = function() {
                         var pattern = new RegExp( '^[a-zA-Z]*$' );
                         if ( ! pattern.test( field['element'].value ) ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -158,7 +173,7 @@ sbf.prototype.validateForm = function() {
                         var pattern = new RegExp( '^[a-zA-Z0-9]*$' );
                         if ( ! pattern.test( field['element'].value ) ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -167,7 +182,7 @@ sbf.prototype.validateForm = function() {
                         var pattern = new RegExp( formObj.validateFields[fieldName][validationType]['regex'] );
                         if ( ! pattern.test( field['element'].value ) ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -175,7 +190,7 @@ sbf.prototype.validateForm = function() {
                     if ( formObj.isTextField(field['element']) && field['element'].value.length > 0 ) {
                         if ( ! formObj.isValidEmail( field['element'].value ) ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                            success = false;
+                            fieldSuccess = false;
                         }
                     }
                     break;
@@ -185,21 +200,30 @@ sbf.prototype.validateForm = function() {
                         if ( field['element'].value.length > 0 || matchField['element'].value.length > 0 ) {
                             if ( field['element'].value !== matchField['element'].value ) {
                                 formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
-                                success = false;
+                                fieldSuccess = false;
                             }
                         }
                     }
                     break;
                 default:
-                    formObj.log( 'unknown validation type >' + validationType + '<' );
+                    formObj.log( 'validateForm: unknown validation type >' + validationType + '<' );
                     break;
             }
         }
+
+        if ( fieldSuccess !== true ) {                          // field has failed validation, mark the form as failed
+            formSuccess = false;
+        } else {                                                // field has validated successfully, remove it from the error queue
+            delete formObj.errorData['formErrors'][fieldName];
+        }
+
     }
 
-    formObj.displayErrors();
+    if ( formSuccess === false ) {
+        formObj.displayErrors();
+    }
 
-    return success;
+    return formSuccess;
 };
 
 sbf.prototype.displayErrors = function() {
@@ -207,10 +231,12 @@ sbf.prototype.displayErrors = function() {
 
     var errorLocation = this.errorData['location'];
     var errorMessage = '';
+    var focusField = undefined;
 
     if ( errorLocation === 'inline' ) {
         for ( var fieldName in this.errorData['formErrors'] ) {
             var errorMessage = ''; // reset errorMessage from the last field
+            if ( focusField === undefined ) { focusField = fieldName; }
 
             for ( var validationType in this.errorData['formErrors'][fieldName] ) {             // foreach field with an error
                 errorMessage += this.getErrorMessage( fieldName, validationType ) + '<br/>';
@@ -225,7 +251,10 @@ sbf.prototype.displayErrors = function() {
                 div.innerHTML = errorMessage;
                 this.insertAfter( div, element );
             }
+
         }
+
+        document.getElementById( focusField ).focus();
     } // end  ( errorLocation === 'inline' )
     else {
         for ( var fieldName in this.errorData['formErrors'] ) {                                 // foreach field with an error
@@ -343,8 +372,7 @@ sbf.prototype.isValidEmail = function( email ) {
 
     if ( atIndex === undefined || atIndex === -1) {
         isValid = false;
-    }
-    else {
+    } else {
         var domain    = email.substring( atIndex + 1 );
         var local     = email.substring( 0, atIndex );
         var localLen  = local.length;
@@ -362,28 +390,14 @@ sbf.prototype.isValidEmail = function( email ) {
         var local1Reg = new RegExp( regex[2] );
         var local2Reg = new RegExp( regex[3] );
 
-        // local part length exceeded
-        if ( localLen < 1 || localLen > 64 ) { isValid = false; }
-
-        // domain part length exceeded
-        else if ( domainLen < 1 || domainLen > 255 ) { isValid = false; }
-
-        // local part starts or ends with '.'
-        else if ( local[0] === '.' || local[localLen-1] === '.') { isValid = false; }
-
-        // local part has two consecutive dots
-        else if ( twoDotReg.test( local ) ) { isValid = false; }
-
-        // character not valid in domain part
-        else if ( ! domainReg.test( domain ) ) { isValid = false; }
-
-        // domain part has two consecutive dots
-        else if ( twoDotReg.test( domain ) ) { isValid = false; }
-
+        if ( localLen < 1 || localLen > 64 ) { isValid = false; }                       // local part length exceeded
+        else if ( domainLen < 1 || domainLen > 255 ) { isValid = false; }               // domain part length exceeded
+        else if ( local[0] === '.' || local[localLen-1] === '.') { isValid = false; }   // local part starts or ends with '.'
+        else if ( twoDotReg.test( local ) ) { isValid = false; }                        // local part has two consecutive dots
+        else if ( ! domainReg.test( domain ) ) { isValid = false; }                     // character not valid in domain part
+        else if ( twoDotReg.test( domain ) ) { isValid = false; }                       // domain part has two consecutive dots
         else if ( ! local1Reg.test( local.replace( '\\\\', '' ) ) ) {
-            // character not valid in local part unless 
-            // local part is quoted
-            if ( ! local2Reg.test( local.replace( '\\\\', '' ) ) ) {
+            if ( ! local2Reg.test( local.replace( '\\\\', '' ) ) ) {                    // character not valid in local part unless local part is quoted
                 isValid = false;
             }
         }
@@ -394,17 +408,14 @@ sbf.prototype.isValidEmail = function( email ) {
 
 sbf.prototype.log = function( message ) {
     if ( this.debug ) {
-        console.debug( message );
+        if ( typeof message === 'string' ) {
+            var currentDate = new Date();
+            console.debug( '[SBF_DEBUGGER - ' + currentDate + ']   ' + message );
+        }
+        else {
+            console.debug( message );
+        }
     }
-};
-
-sbf.prototype.toArray = function( obj ) {
-    var array = [];
-    // iterate backwards ensuring that length is an UInt32
-    for ( var i = obj.length >>> 0; i--; ) { 
-        array[i] = obj[i];
-    }
-    return array;
 };
 
 sbf.prototype.insertAfter = function( newElement, targetElement ) {
@@ -440,6 +451,6 @@ sbf.prototype.getYPosition = function( elementId ) {
         yPosition += element.offsetTop;
         element = element.offsetParent;
     }
-    
+
     return yPosition;
 };
