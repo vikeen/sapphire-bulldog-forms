@@ -37,6 +37,13 @@ function sbf( args ) {
             'default': {}
         }
     };
+    this.validFieldTypes = {
+        'text': {
+            'text': true,
+            'textarea': true,
+            'password': true
+        }
+    };
 
     this.init();
 }
@@ -120,8 +127,14 @@ sbf.prototype.validateForm = function() {
 
     for ( var fieldName in formObj.validateFields ) {
         var fieldSuccess = true;
-        var field = formObj.formFields[fieldName];
-        var tagName = field['element'].tagName.toUpperCase();
+        var field;
+        var tagName;
+
+        if ( isFieldGroup( fieldName ) ) {
+        } else {
+            field   = formObj.formFields[fieldName]
+            tagName = field['element'].tagName.toUpperCase();
+        }
 
         formObj.errorData['formErrors'][fieldName] = new Array();
         for ( var validationType in formObj.validateFields[fieldName] ) {
@@ -129,6 +142,11 @@ sbf.prototype.validateForm = function() {
                 case 'required':
                     if ( formObj.isTextField( field['element'] ) ) {
                         if ( field['element'].value.length <= 0 ) {
+                            formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
+                            fieldSuccess = false;
+                        }
+                    } else if ( field['element'].type === 'checkbox' ) {
+                        if ( field['element'].checked === false ) {
                             formObj.errorData['formErrors'][fieldName][validationType] = formObj.validateFields[fieldName][validationType];
                             fieldSuccess = false;
                         }
@@ -358,8 +376,21 @@ sbf.prototype.getErrorMessage = function( fieldName, validationType ) {
   # Misc / Helper Functions
   #
   ####################################*/
+sbf.prototype.isFieldGroup = function( fieldName ) {
+
+    var numFields
+    for ( var i in this.formFields[fieldName] ) {
+        numFields++;
+    }
+
+    alert(numFields);
+
+    return false
+};
+
 sbf.prototype.isTextField = function( field ) {
-    if ( field.type === 'text' || field.type === 'textarea' || field.type === 'password' ) {
+
+    if ( this.validFieldTypes['text'][field.type] === true ) {
         return true;
     } else {
         return false;
